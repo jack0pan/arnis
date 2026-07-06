@@ -85,13 +85,29 @@ pub fn sanitize_for_filename(name: &str) -> String {
 }
 
 /// Builds the Bedrock output path and level name for a given bounding box.
+///
+/// If `custom_name` is provided, it is used verbatim as the level name (and,
+/// sanitized, as the file name) instead of the location looked up from `bbox`.
 /// Combines area name lookup, sanitization, and path construction.
-pub fn build_bedrock_output(bbox: &LLBBox, output_dir: PathBuf) -> (PathBuf, String) {
-    let area_name = get_area_name_for_bedrock(bbox);
-    let safe_name = sanitize_for_filename(&area_name);
-    let filename = format!("Arnis {safe_name}.mcworld");
-    let lvl_name = format!("Arnis World: {safe_name}");
-    (output_dir.join(&filename), lvl_name)
+pub fn build_bedrock_output(
+    bbox: &LLBBox,
+    output_dir: PathBuf,
+    custom_name: Option<&str>,
+) -> (PathBuf, String) {
+    match custom_name {
+        Some(name) => {
+            let safe_name = sanitize_for_filename(name);
+            let filename = format!("{safe_name}.mcworld");
+            (output_dir.join(&filename), name.to_string())
+        }
+        None => {
+            let area_name = get_area_name_for_bedrock(bbox);
+            let safe_name = sanitize_for_filename(&area_name);
+            let filename = format!("Arnis {safe_name}.mcworld");
+            let lvl_name = format!("Arnis World: {safe_name}");
+            (output_dir.join(&filename), lvl_name)
+        }
+    }
 }
 
 /// Creates a new Java Edition world in the given base directory.
@@ -100,33 +116,47 @@ pub fn build_bedrock_output(bbox: &LLBBox, output_dir: PathBuf) -> (PathBuf, Str
 /// (with a `region/` subdirectory), writes the region template, level.dat
 /// (with updated name, timestamp, and spawn position), and icon.png.
 ///
+/// If `custom_name` is provided, it is sanitized and used verbatim (with a
+/// numeric suffix appended on conflict) instead of the "Arnis World N" scheme.
+///
 /// Returns the full path to the newly created world directory.
-pub fn create_new_world(base_path: &Path) -> Result<String, String> {
-    // Generate a unique world name with proper counter
-    // Check for both "Arnis World X" and "Arnis World X: Location" patterns
-    let mut counter: i32 = 1;
-    let unique_name: String = loop {
-        let candidate_name: String = format!("Arnis World {counter}");
-        let candidate_path: PathBuf = base_path.join(&candidate_name);
-
-        // Check for exact match (no location suffix)
-        let exact_match_exists = candidate_path.exists();
-
-        // Check for worlds with location suffix (Arnis World X: Location)
-        let location_pattern = format!("Arnis World {counter}: ");
-        let location_match_exists = fs::read_dir(base_path)
-            .map(|entries| {
-                entries
-                    .filter_map(Result::ok)
-                    .filter_map(|entry| entry.file_name().into_string().ok())
-                    .any(|name| name.starts_with(&location_pattern))
-            })
-            .unwrap_or(false);
-
-        if !exact_match_exists && !location_match_exists {
-            break candidate_name;
+pub fn create_new_world(base_path: &Path, custom_name: Option<&str>) -> Result<String, String> {
+    let unique_name: String = if let Some(name) = custom_name {
+        let safe_name = sanitize_for_filename(name);
+        let mut candidate_name = safe_name.clone();
+        let mut counter: i32 = 2;
+        while base_path.join(&candidate_name).exists() {
+            candidate_name = format!("{safe_name} {counter}");
+            counter += 1;
         }
-        counter += 1;
+        candidate_name
+    } else {
+        // Generate a unique world name with proper counter
+        // Check for both "Arnis World X" and "Arnis World X: Location" patterns
+        let mut counter: i32 = 1;
+        loop {
+            let candidate_name: String = format!("Arnis World {counter}");
+            let candidate_path: PathBuf = base_path.join(&candidate_name);
+
+            // Check for exact match (no location suffix)
+            let exact_match_exists = candidate_path.exists();
+
+            // Check for worlds with location suffix (Arnis World X: Location)
+            let location_pattern = format!("Arnis World {counter}: ");
+            let location_match_exists = fs::read_dir(base_path)
+                .map(|entries| {
+                    entries
+                        .filter_map(Result::ok)
+                        .filter_map(|entry| entry.file_name().into_string().ok())
+                        .any(|name| name.starts_with(&location_pattern))
+                })
+                .unwrap_or(false);
+
+            if !exact_match_exists && !location_match_exists {
+                break candidate_name;
+            }
+            counter += 1;
+        }
     };
 
     let new_world_path: PathBuf = base_path.join(&unique_name);

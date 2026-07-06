@@ -122,6 +122,12 @@ pub struct Args {
     /// Render a top-down PNG map preview of the generated world (Java and Bedrock)
     #[arg(long, default_value_t = false)]
     pub map_preview: bool,
+
+    /// Custom world/level name (optional). Overrides the auto-generated
+    /// location-based name for Java and Bedrock worlds. Used verbatim, with
+    /// filesystem-invalid characters sanitized in the file/directory name.
+    #[arg(long)]
+    pub name: Option<String>,
 }
 
 /// Validates CLI arguments after parsing.
