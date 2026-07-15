@@ -292,7 +292,7 @@ fn gui_create_world(save_path: String) -> Result<String, i32> {
 }
 
 fn create_new_world(base_path: &Path) -> Result<String, String> {
-    crate::world_utils::create_new_world(base_path)
+    crate::world_utils::create_new_world(base_path, None)
 }
 
 /// Adds localized area name to the world name in level.dat
@@ -1110,7 +1110,7 @@ fn gui_start_generation(
                     // Bedrock: generate .mcworld on Desktop with location-based name
                     let output_dir = crate::world_utils::get_bedrock_output_directory();
                     let (output_path, lvl_name) =
-                        crate::world_utils::build_bedrock_output(&bbox, output_dir);
+                        crate::world_utils::build_bedrock_output(&bbox, output_dir, None);
                     progress::emit_world_name_update(&lvl_name);
                     (output_path, Some(lvl_name))
                 }
@@ -1212,8 +1212,8 @@ fn gui_start_generation(
                 world_time: world_time.clamp(0, 23999),
                 map_item,
                 // Frontend refuses previews for rotated worlds, skip the work there.
-                map_preview: world_format != WorldFormat::LuantiWorld
-                    && rotation_angle.abs() <= f64::EPSILON,
+                map_preview: rotation_angle.abs() <= f64::EPSILON,
+                name: None,
             };
 
             // If skip_osm_objects is true (terrain-only mode), skip fetching and processing OSM data

@@ -168,7 +168,8 @@ fn run_cli() {
             .path
             .clone()
             .unwrap_or_else(world_utils::get_bedrock_output_directory);
-        let (output_path, lvl_name) = world_utils::build_bedrock_output(&args.bbox, output_dir);
+        let (output_path, lvl_name) =
+            world_utils::build_bedrock_output(&args.bbox, output_dir, args.name.as_deref());
         (output_path, Some(lvl_name))
     } else if args.luanti {
         let base_dir = args
@@ -176,13 +177,24 @@ fn run_cli() {
             .clone()
             .unwrap_or_else(world_utils::get_luanti_worlds_directory);
         let _ = std::fs::create_dir_all(&base_dir);
-        let mut counter = 1;
-        let world_name = loop {
-            let candidate = format!("Arnis Luanti World {counter}");
-            if !base_dir.join(&candidate).exists() {
-                break candidate;
+        let world_name = if let Some(name) = args.name.as_deref() {
+            let safe_name = world_utils::sanitize_for_filename(name);
+            let mut candidate = safe_name.clone();
+            let mut counter = 2;
+            while base_dir.join(&candidate).exists() {
+                candidate = format!("{safe_name} {counter}");
+                counter += 1;
             }
-            counter += 1;
+            candidate
+        } else {
+            let mut counter = 1;
+            loop {
+                let candidate = format!("Arnis Luanti World {counter}");
+                if !base_dir.join(&candidate).exists() {
+                    break candidate;
+                }
+                counter += 1;
+            }
         };
         let world_path = base_dir.join(&world_name);
         println!(
@@ -193,7 +205,7 @@ fn run_cli() {
     } else {
         // Java: create a new world in the provided output directory
         let base_dir = args.path.clone().unwrap();
-        let world_path = match world_utils::create_new_world(&base_dir) {
+        let world_path = match world_utils::create_new_world(&base_dir, args.name.as_deref()) {
             Ok(path) => PathBuf::from(path),
             Err(e) => {
                 eprintln!("{} {}", "Error:".red().bold(), e);
