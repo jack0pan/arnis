@@ -155,7 +155,7 @@ pub struct Args {
     #[arg(long, default_value_t = false)]
     pub voxy_lod: bool,
 
-    /// Render a top-down PNG map preview of the generated world (Java and Bedrock)
+    /// Render a top-down PNG map preview of the generated world
     #[arg(long, default_value_t = false)]
     pub map_preview: bool,
 
@@ -167,15 +167,22 @@ pub struct Args {
     #[arg(long, value_enum, default_value_t = GameMode::Creative)]
     pub gamemode: GameMode,
 
-    /// Initial time of day in ticks (0 = dawn, 6000 = noon, 18000 = midnight)
-    #[arg(long, default_value_t = DEFAULT_WORLD_TIME, value_parser = clap::value_parser!(i64).range(0..24000))]
-    pub world_time: i64,
+    /// Initial time of day in ticks (0 = dawn, 6000 = noon, 18000 = midnight).
+    /// Defaults to noon on Earth and midnight on the Moon and Mars.
+    #[arg(long, value_parser = clap::value_parser!(i64).range(0..24000))]
+    pub world_time: Option<i64>,
 
     /// Readable image signs, Java only. `basic` covers public signage: street names,
     /// traffic signs, transit stops, information boards and billboards. `full` adds
     /// building signage: shop name plates, house numbers and crossing signs.
     #[arg(long, value_enum, default_value_t = SignageLevel::Basic)]
     pub signage: SignageLevel,
+
+    /// Custom world/level name (optional). Overrides the auto-generated
+    /// name for Java, Bedrock, and Luanti worlds. Used verbatim, with
+    /// filesystem-invalid characters sanitized in the file/directory name.
+    #[arg(long)]
+    pub name: Option<String>,
 
     /// Mapillary API token, from https://www.mapillary.com/developer. Required by
     /// --mapillary-facades and --mapillary-probe.
@@ -409,6 +416,16 @@ fn parse_scale(arg: &str) -> Result<f64, String> {
 }
 
 impl Args {
+    /// Initial time after applying the body's default without losing an explicit
+    /// `--world-time=6000`, which is numerically equal to Earth's default.
+    pub fn resolved_world_time(&self) -> i64 {
+        self.world_time.unwrap_or(if self.body.is_earth() {
+            DEFAULT_WORLD_TIME
+        } else {
+            MIDNIGHT_TICKS
+        })
+    }
+
     /// Whether this run uses real elevation terrain rather than flat ground.
     pub fn terrain(&self) -> bool {
         self.mode.terrain()
@@ -562,15 +579,9 @@ pub fn apply_body_defaults(args: &mut Args) {
     args.mapillary_facades = Some(false);
     // Relief already fits vanilla height, so the pack would add only empty sky.
     args.disable_height_limit = false;
-    // Airless bodies look right at night. Only a default: comparing against the
-    // flag's own default lets an explicit --world-time win.
-    if args.world_time == DEFAULT_WORLD_TIME {
-        args.world_time = MIDNIGHT_TICKS;
-    }
 }
 
-/// Clap's `--world-time` default, so `apply_body_defaults` can tell left-alone
-/// from explicitly-set.
+/// Default initial time on Earth (noon).
 pub const DEFAULT_WORLD_TIME: i64 = 6_000;
 /// Minecraft tick for midnight (tick 0 is 06:00).
 pub const MIDNIGHT_TICKS: i64 = 18_000;
@@ -592,10 +603,6 @@ pub fn validate_args(args: &Args) -> Result<(), String> {
             "--terrain contradicts --mode geo-only (flat ground). Drop --terrain, or use --mode geo-terrain."
                 .to_string(),
         );
-    }
-
-    if args.map_preview && args.luanti {
-        return Err("--map-preview is not supported for Luanti worlds.".to_string());
     }
 
     // Never shipped working: X gets a cos(lat) factor and Z does not, so the world comes out
@@ -854,6 +861,32 @@ mod tests {
         let mut cmd: Vec<&str> = base.to_vec();
         cmd.extend_from_slice(&["--mode", "objects"]);
         assert!(Args::try_parse_from(cmd.iter()).is_err());
+    }
+
+    #[test]
+    fn planetary_world_time_distinguishes_default_from_explicit_noon() {
+        let parse = |extra: &[&str]| {
+            let mut cmd = vec!["arnis", "--bbox", "1,2,3,4", "--body", "moon"];
+            cmd.extend_from_slice(extra);
+            let mut args = Args::parse_from(cmd);
+            apply_body_defaults(&mut args);
+            args
+        };
+
+        let omitted = parse(&[]);
+        assert_eq!(omitted.world_time, None);
+        assert_eq!(omitted.resolved_world_time(), MIDNIGHT_TICKS);
+
+        let explicit_noon = parse(&["--world-time=6000"]);
+        assert_eq!(explicit_noon.world_time, Some(DEFAULT_WORLD_TIME));
+        assert_eq!(explicit_noon.resolved_world_time(), DEFAULT_WORLD_TIME);
+    }
+
+    #[test]
+    fn earth_world_time_still_defaults_to_noon() {
+        let args = Args::parse_from(["arnis", "--bbox", "1,2,3,4"]);
+        assert_eq!(args.world_time, None);
+        assert_eq!(args.resolved_world_time(), DEFAULT_WORLD_TIME);
     }
 
     #[test]

@@ -161,28 +161,33 @@ pub fn sanitize_for_filename(name: &str) -> String {
 }
 
 /// Builds the Bedrock output path and level name for a given bounding box.
+///
+/// If `custom_name` is provided, it is used verbatim as the level name (and,
+/// sanitized, as the file name) instead of the location looked up from `bbox`.
 /// Combines area name lookup, sanitization, and path construction.
-pub fn build_bedrock_output(bbox: &LLBBox, output_dir: PathBuf) -> (PathBuf, String) {
-    let area_name = get_area_name_for_bedrock(bbox);
-    let safe_name = sanitize_for_filename(&area_name);
-    let filename = format!("Arnis {safe_name}.mcworld");
-    let lvl_name = format!("Arnis World: {safe_name}");
-    (output_dir.join(&filename), lvl_name)
+pub fn build_bedrock_output(
+    bbox: &LLBBox,
+    output_dir: PathBuf,
+    custom_name: Option<&str>,
+) -> (PathBuf, String) {
+    match custom_name {
+        Some(name) => {
+            let safe_name = sanitize_for_filename(name);
+            let filename = format!("{safe_name}.mcworld");
+            (output_dir.join(&filename), name.to_string())
+        }
+        None => {
+            let area_name = get_area_name_for_bedrock(bbox);
+            let safe_name = sanitize_for_filename(&area_name);
+            let filename = format!("Arnis {safe_name}.mcworld");
+            let lvl_name = format!("Arnis World: {safe_name}");
+            (output_dir.join(&filename), lvl_name)
+        }
+    }
 }
 
-/// Creates a new Java Edition world in the given base directory.
-///
-/// Generates a unique "Arnis World N" name, creates the directory structure
-/// (with a `region/` subdirectory), writes the region template, level.dat
-/// (with updated name, timestamp, and spawn position), and icon.png.
-///
-/// Returns the full path to the newly created world directory.
-pub fn create_new_world(base_path: &Path) -> Result<String, String> {
-    create_new_world_with_name(base_path, None)
-}
-
-/// Same as [`create_new_world`], but lets the caller request a specific world
-/// name instead of the auto-generated "Arnis World N" scheme. `custom_name` is
+/// Creates a new Java Edition world, optionally using a requested world name.
+/// `custom_name` is
 /// sanitized for filesystem safety and de-duplicated against existing worlds
 /// in `base_path` (appending " (2)", " (3)", ... on collision). A `None`,
 /// empty/whitespace-only, or entirely-invalid custom name falls back to the
@@ -1067,7 +1072,7 @@ mod tests {
     #[test]
     fn apply_java_world_settings_writes_gametype_and_daytime() {
         let tmp = tempfile::tempdir().unwrap();
-        let world = PathBuf::from(create_new_world(tmp.path()).unwrap());
+        let world = PathBuf::from(create_new_world_with_name(tmp.path(), None).unwrap());
         apply_java_world_settings(&world, crate::args::GameMode::Survival, 13000).unwrap();
 
         let raw = fs::read(world.join("level.dat")).unwrap();
@@ -1125,7 +1130,7 @@ mod tests {
     #[test]
     fn superflat_floor_follows_the_extended_world_floor() {
         let tmp = tempfile::tempdir().unwrap();
-        let world = PathBuf::from(create_new_world(tmp.path()).unwrap());
+        let world = PathBuf::from(create_new_world_with_name(tmp.path(), None).unwrap());
         let raw = fs::read(world.join("level.dat")).unwrap();
         let mut decompressed = Vec::new();
         GzDecoder::new(raw.as_slice())
@@ -1164,7 +1169,7 @@ mod tests {
             .unwrap_or_else(|p| p.into_inner());
         let tmp = tempfile::tempdir().unwrap();
 
-        let vanilla = PathBuf::from(create_new_world(tmp.path()).unwrap());
+        let vanilla = PathBuf::from(create_new_world_with_name(tmp.path(), None).unwrap());
         crate::world_editor::set_world_bounds(
             crate::world_editor::DEFAULT_MIN_Y,
             crate::world_editor::DEFAULT_MAX_Y,
@@ -1173,7 +1178,7 @@ mod tests {
         apply_java_world_settings(&vanilla, crate::args::GameMode::Creative, 6000).unwrap();
         let vanilla_layers = flat_layers(&level_dat_root(&vanilla));
 
-        let tall = PathBuf::from(create_new_world(tmp.path()).unwrap());
+        let tall = PathBuf::from(create_new_world_with_name(tmp.path(), None).unwrap());
         crate::world_editor::set_world_bounds(-2032, 2031);
         crate::world_editor::set_base_chunk_y(-1876);
         apply_java_world_settings(&tall, crate::args::GameMode::Creative, 6000).unwrap();
@@ -1194,7 +1199,7 @@ mod tests {
     const LAST_PRE_MINOR_DATA_FORMAT: u64 = 81;
 
     fn install_pack_for_test(tmp: &std::path::Path) -> PathBuf {
-        let world = PathBuf::from(create_new_world(tmp).unwrap());
+        let world = PathBuf::from(create_new_world_with_name(tmp, None).unwrap());
         install_tall_datapack(&world).unwrap();
         world.join("datapacks").join(TALL_DATAPACK_NAME)
     }

@@ -1551,7 +1551,7 @@ fn gui_start_generation(
                 WorldFormat::BedrockMcWorld => {
                     // Bedrock: generate .mcworld in the configured directory
                     let (output_path, lvl_name) =
-                        crate::world_utils::build_bedrock_output(&bbox, bedrock_output_dir);
+                        crate::world_utils::build_bedrock_output(&bbox, bedrock_output_dir, None);
                     progress::emit_world_name_update(&lvl_name);
                     (output_path, Some(lvl_name))
                 }
@@ -1661,12 +1661,15 @@ fn gui_start_generation(
                 bake_lighting: bake_lighting_enabled,
                 voxy_lod: voxy_lod_enabled,
                 gamemode: crate::args::GameMode::from_str_lossy(&gamemode),
-                world_time: world_time.clamp(0, 23999),
+                // The GUI always supplies a value: changing bodies establishes
+                // that body's default in the slider, after which the user may
+                // deliberately choose any time, including noon (tick 6000).
+                world_time: Some(world_time.clamp(0, 23999)),
                 map_item,
                 // Frontend refuses previews for rotated worlds, skip the work there.
-                map_preview: world_format != WorldFormat::LuantiWorld
-                    && rotation_angle.abs() <= f64::EPSILON,
+                map_preview: rotation_angle.abs() <= f64::EPSILON,
                 signage: crate::args::SignageLevel::from_str_lossy(&signage),
+                name: None,
                 // The settings toggle and the token together: the toggle is what
                 // the user turns off to keep a saved token without paying for the
                 // download, and without a token there is nothing to fetch.
@@ -2062,7 +2065,9 @@ mod tests {
     #[test]
     fn the_player_starts_on_the_world_spawn_column() {
         let tmp = tempfile::tempdir().unwrap();
-        let world = PathBuf::from(crate::world_utils::create_new_world(tmp.path()).unwrap());
+        let world = PathBuf::from(
+            crate::world_utils::create_new_world_with_name(tmp.path(), None).unwrap(),
+        );
 
         let mut root = read_level_dat(&world);
         let Value::Compound(ref mut map) = root else {

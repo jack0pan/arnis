@@ -560,7 +560,7 @@ pub fn generate_world_with_options(
     let wants_voxy = args.voxy_lod && world_format == WorldFormat::JavaAnvil;
     editor.set_bake_lighting(args.bake_lighting || wants_voxy);
     editor.set_place_schematics(args.use_3d);
-    editor.set_game_settings(args.gamemode, args.world_time);
+    editor.set_game_settings(args.gamemode, args.resolved_world_time());
     editor.set_start_with_map(args.map_item);
     editor.set_map_decals(world_format == WorldFormat::JavaAnvil);
     editor.set_projection_info(&args.projection.to_string(), args.scale);
@@ -667,7 +667,7 @@ pub fn generate_world_with_options(
             .any(|(k, _)| matches!(k, crate::decals::DecalKey::LocalMap { .. }))
     });
 
-    // Map preview accumulator, fed as regions are saved/flushed (Java/Bedrock).
+    // Map preview accumulator, fed as regions are saved/flushed.
     let preview_epoch = map_preview::begin_preview_epoch();
     // The map item consumes the same accumulator, so either feature enables it.
     // Without the PNG the map item only needs 128px, so a small frame suffices
@@ -675,7 +675,7 @@ pub fn generate_world_with_options(
     let wants_map_item = args.map_item && world_format == WorldFormat::JavaAnvil;
     // Branding map ships on every Java world.
     let place_branding = world_format == WorldFormat::JavaAnvil;
-    let wants_png = args.map_preview && world_format != WorldFormat::LuantiWorld;
+    let wants_png = args.map_preview;
     let preview = (wants_png || wants_map_item || wants_local_maps).then(|| {
         Arc::new(if wants_png {
             PreviewAccumulator::new(&xzbbox)
@@ -1622,7 +1622,7 @@ pub fn generate_world_with_options(
         if let Err(e) = crate::world_utils::apply_java_world_settings(
             &output_path,
             args.gamemode,
-            args.world_time,
+            args.resolved_world_time(),
         ) {
             eprintln!("Warning: Failed to apply world settings: {e}");
         }
