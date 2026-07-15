@@ -1551,7 +1551,7 @@ fn gui_start_generation(
                 WorldFormat::BedrockMcWorld => {
                     // Bedrock: generate .mcworld in the configured directory
                     let (output_path, lvl_name) =
-                        crate::world_utils::build_bedrock_output(&bbox, bedrock_output_dir);
+                        crate::world_utils::build_bedrock_output(&bbox, bedrock_output_dir, None);
                     progress::emit_world_name_update(&lvl_name);
                     (output_path, Some(lvl_name))
                 }
@@ -1664,9 +1664,9 @@ fn gui_start_generation(
                 world_time: world_time.clamp(0, 23999),
                 map_item,
                 // Frontend refuses previews for rotated worlds, skip the work there.
-                map_preview: world_format != WorldFormat::LuantiWorld
-                    && rotation_angle.abs() <= f64::EPSILON,
+                map_preview: rotation_angle.abs() <= f64::EPSILON,
                 signage: crate::args::SignageLevel::from_str_lossy(&signage),
+                name: None,
                 // The settings toggle and the token together: the toggle is what
                 // the user turns off to keep a saved token without paying for the
                 // download, and without a token there is nothing to fetch.

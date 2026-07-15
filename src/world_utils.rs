@@ -161,13 +161,29 @@ pub fn sanitize_for_filename(name: &str) -> String {
 }
 
 /// Builds the Bedrock output path and level name for a given bounding box.
+///
+/// If `custom_name` is provided, it is used verbatim as the level name (and,
+/// sanitized, as the file name) instead of the location looked up from `bbox`.
 /// Combines area name lookup, sanitization, and path construction.
-pub fn build_bedrock_output(bbox: &LLBBox, output_dir: PathBuf) -> (PathBuf, String) {
-    let area_name = get_area_name_for_bedrock(bbox);
-    let safe_name = sanitize_for_filename(&area_name);
-    let filename = format!("Arnis {safe_name}.mcworld");
-    let lvl_name = format!("Arnis World: {safe_name}");
-    (output_dir.join(&filename), lvl_name)
+pub fn build_bedrock_output(
+    bbox: &LLBBox,
+    output_dir: PathBuf,
+    custom_name: Option<&str>,
+) -> (PathBuf, String) {
+    match custom_name {
+        Some(name) => {
+            let safe_name = sanitize_for_filename(name);
+            let filename = format!("{safe_name}.mcworld");
+            (output_dir.join(&filename), name.to_string())
+        }
+        None => {
+            let area_name = get_area_name_for_bedrock(bbox);
+            let safe_name = sanitize_for_filename(&area_name);
+            let filename = format!("Arnis {safe_name}.mcworld");
+            let lvl_name = format!("Arnis World: {safe_name}");
+            (output_dir.join(&filename), lvl_name)
+        }
+    }
 }
 
 /// Creates a new Java Edition world in the given base directory.

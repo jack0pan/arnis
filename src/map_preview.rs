@@ -48,7 +48,7 @@ pub fn last_preview_result() -> Option<PreviewResult> {
     PREVIEW_STATE.lock().unwrap().1.clone()
 }
 
-/// Java: inside the world dir; Bedrock: "<name> map.png" next to the .mcworld.
+/// Java/Luanti: inside the world dir; Bedrock: "<name> map.png" next to the .mcworld.
 pub fn preview_output_path(world_output: &Path, format: WorldFormat) -> PathBuf {
     match format {
         WorldFormat::BedrockMcWorld => {
