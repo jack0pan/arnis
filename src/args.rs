@@ -124,7 +124,7 @@ pub struct Args {
     #[arg(long, default_value_t = false)]
     pub bake_lighting: bool,
 
-    /// Render a top-down PNG map preview of the generated world (Java and Bedrock)
+    /// Render a top-down PNG map preview of the generated world
     #[arg(long, default_value_t = false)]
     pub map_preview: bool,
 
@@ -139,6 +139,12 @@ pub struct Args {
     /// Initial time of day in ticks (0 = dawn, 6000 = noon, 18000 = midnight)
     #[arg(long, default_value_t = 6000, value_parser = clap::value_parser!(i64).range(0..24000))]
     pub world_time: i64,
+
+    /// Custom world/level name (optional). Overrides the auto-generated
+    /// name for Java, Bedrock, and Luanti worlds. Used verbatim, with
+    /// filesystem-invalid characters sanitized in the file/directory name.
+    #[arg(long)]
+    pub name: Option<String>,
 }
 
 /// Generation mode, matching the GUI's dropdown (src/gui/js/main.js).
@@ -225,10 +231,6 @@ pub fn validate_args(args: &Args) -> Result<(), String> {
             "--terrain contradicts --mode geo-only (flat ground). Drop --terrain, or use --mode geo-terrain."
                 .to_string(),
         );
-    }
-
-    if args.map_preview && args.luanti {
-        return Err("--map-preview is not supported for Luanti worlds.".to_string());
     }
 
     if args.bedrock {
