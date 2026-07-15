@@ -680,7 +680,7 @@ pub fn generate_world_with_options(
         crate::world_utils::remove_untouched_template_region(&output_path);
     }
     editor.set_place_schematics(args.use_3d);
-    editor.set_game_settings(args.gamemode, args.world_time);
+    editor.set_game_settings(args.gamemode, args.resolved_world_time());
     editor.set_start_with_map(args.map_item);
     editor.set_map_decals(world_format == WorldFormat::JavaAnvil);
     editor.set_projection_info(&args.projection.to_string(), args.scale);
@@ -823,12 +823,12 @@ pub fn generate_world_with_options(
             .any(|(k, _)| matches!(k, crate::decals::DecalKey::LocalMap { .. }))
     });
 
-    // Map preview accumulator, fed as regions are saved/flushed (Java/Bedrock).
+    // Map preview accumulator, fed as regions are saved/flushed.
     let preview_epoch = map_preview::begin_preview_epoch();
     // The map item consumes the same accumulator, so either feature enables it.
     // Without the PNG the map item only needs 128px, so a small frame suffices
     // (512 = 4x supersampling) instead of the full-resolution preview buffer.
-    let wants_png = args.map_preview && world_format != WorldFormat::LuantiWorld;
+    let wants_png = args.map_preview;
     let preview = (wants_png || wants_map_item || wants_local_maps).then(|| {
         Arc::new(if wants_png && one_world.is_some() {
             // Every area of a One World is sent to the map overlay at once.
@@ -1944,7 +1944,7 @@ pub fn generate_world_with_options(
         if let Err(e) = crate::world_utils::apply_java_world_settings(
             &output_path,
             args.gamemode,
-            args.world_time,
+            args.resolved_world_time(),
             args.world_type,
         ) {
             eprintln!("Warning: Failed to apply world settings: {e}");

@@ -487,8 +487,9 @@ mod tests {
     #[test]
     fn writes_map_files_and_inventory_item() {
         let tmp = tempfile::tempdir().unwrap();
-        let world =
-            std::path::PathBuf::from(crate::world_utils::create_new_world(tmp.path()).unwrap());
+        let world = std::path::PathBuf::from(
+            crate::world_utils::create_new_world_with_name(tmp.path(), None).unwrap(),
+        );
         let xzbbox = XZBBox::rect_from_xz_lengths(300.0, 100.0).unwrap();
         let preview = PreviewAccumulator::new(&xzbbox);
         write_map_item(&world, &preview, &xzbbox).unwrap();
@@ -538,8 +539,9 @@ mod tests {
     #[test]
     fn writes_branding_map_beside_preview_but_world_only() {
         let tmp = tempfile::tempdir().unwrap();
-        let world =
-            std::path::PathBuf::from(crate::world_utils::create_new_world(tmp.path()).unwrap());
+        let world = std::path::PathBuf::from(
+            crate::world_utils::create_new_world_with_name(tmp.path(), None).unwrap(),
+        );
         let xzbbox = XZBBox::rect_from_xz_lengths(100.0, 100.0).unwrap();
         let preview = PreviewAccumulator::new(&xzbbox);
         write_map_item(&world, &preview, &xzbbox).unwrap();
@@ -569,8 +571,9 @@ mod tests {
     #[test]
     fn branding_only_writes_map_zero_and_no_inventory() {
         let tmp = tempfile::tempdir().unwrap();
-        let world =
-            std::path::PathBuf::from(crate::world_utils::create_new_world(tmp.path()).unwrap());
+        let world = std::path::PathBuf::from(
+            crate::world_utils::create_new_world_with_name(tmp.path(), None).unwrap(),
+        );
         write_branding_map_only(&world).unwrap();
 
         // With the preview off, the branding map is the world's first map (id 0).
@@ -609,8 +612,9 @@ mod tests {
     fn writes_decal_maps_with_registry_ids() {
         use crate::decals::{DecalKey, TextStyle};
         let tmp = tempfile::tempdir().unwrap();
-        let world =
-            std::path::PathBuf::from(crate::world_utils::create_new_world(tmp.path()).unwrap());
+        let world = std::path::PathBuf::from(
+            crate::world_utils::create_new_world_with_name(tmp.path(), None).unwrap(),
+        );
         let mut keys = std::collections::BTreeSet::new();
         keys.insert(DecalKey::Pictogram("bus_stop"));
         keys.insert(DecalKey::Pictogram("recycling"));
@@ -718,8 +722,9 @@ mod tests {
     #[test]
     fn oversized_world_disables_the_player_marker() {
         let tmp = tempfile::tempdir().unwrap();
-        let world =
-            std::path::PathBuf::from(crate::world_utils::create_new_world(tmp.path()).unwrap());
+        let world = std::path::PathBuf::from(
+            crate::world_utils::create_new_world_with_name(tmp.path(), None).unwrap(),
+        );
         let xzbbox = XZBBox::rect_from_xz_lengths(3000.0, 3000.0).unwrap();
         let preview = PreviewAccumulator::new(&xzbbox);
         write_map_item(&world, &preview, &xzbbox).unwrap();
@@ -737,8 +742,9 @@ mod tests {
     #[test]
     fn preserves_user_items_and_dodges_occupied_slot_zero() {
         let tmp = tempfile::tempdir().unwrap();
-        let world =
-            std::path::PathBuf::from(crate::world_utils::create_new_world(tmp.path()).unwrap());
+        let world = std::path::PathBuf::from(
+            crate::world_utils::create_new_world_with_name(tmp.path(), None).unwrap(),
+        );
 
         // Seed: a sword in slot 0 and the user's own map in slot 5.
         let mut root = read_gzip_nbt(&world.join("level.dat")).unwrap();
@@ -792,8 +798,9 @@ mod tests {
     #[test]
     fn respects_existing_idcounts_and_replaces_old_item() {
         let tmp = tempfile::tempdir().unwrap();
-        let world =
-            std::path::PathBuf::from(crate::world_utils::create_new_world(tmp.path()).unwrap());
+        let world = std::path::PathBuf::from(
+            crate::world_utils::create_new_world_with_name(tmp.path(), None).unwrap(),
+        );
         let data_dir = world.join("data");
         std::fs::create_dir_all(&data_dir).unwrap();
         write_gzip_nbt(
