@@ -137,7 +137,7 @@ pub struct Args {
     #[arg(long, default_value_t = false)]
     pub bake_lighting: bool,
 
-    /// Render a top-down PNG map preview of the generated world (Java and Bedrock)
+    /// Render a top-down PNG map preview of the generated world
     #[arg(long, default_value_t = false)]
     pub map_preview: bool,
 
@@ -158,6 +158,12 @@ pub struct Args {
     /// building signage: shop name plates, house numbers and crossing signs.
     #[arg(long, value_enum, default_value_t = SignageLevel::Basic)]
     pub signage: SignageLevel,
+
+    /// Custom world/level name (optional). Overrides the auto-generated
+    /// name for Java, Bedrock, and Luanti worlds. Used verbatim, with
+    /// filesystem-invalid characters sanitized in the file/directory name.
+    #[arg(long)]
+    pub name: Option<String>,
 }
 
 /// How much image signage to place.
@@ -311,10 +317,6 @@ pub fn validate_args(args: &Args) -> Result<(), String> {
             "--terrain contradicts --mode geo-only (flat ground). Drop --terrain, or use --mode geo-terrain."
                 .to_string(),
         );
-    }
-
-    if args.map_preview && args.luanti {
-        return Err("--map-preview is not supported for Luanti worlds.".to_string());
     }
 
     // A bounding box is required unless a local --file supplies one to derive it from.
